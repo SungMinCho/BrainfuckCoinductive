@@ -99,16 +99,16 @@ Inductive behavior : instruction -> memory -> stream event -> Prop :=
 | beh_end : forall m, behavior End m Nil
 | beh_left : forall t l ls c rs es,
              behavior t (_memory ls l (Cons c rs)) es
-          -> behavior (Left t) (_memory (Cons l ls) c rs) es
+          -> behavior (Left t) (_memory (Cons l ls) c rs) (Cons eTau es)
 | beh_right : forall t ls c r rs es,
               behavior t (_memory (Cons c ls) r rs) es
-           -> behavior (Right t) (_memory ls c (Cons r rs)) es
+           -> behavior (Right t) (_memory ls c (Cons r rs)) (Cons eTau es)
 | beh_inc : forall t ls c rs es,
             behavior t (_memory ls (c+1) rs) es
-            -> behavior (Inc t) (_memory ls c rs) es
+            -> behavior (Inc t) (_memory ls c rs) (Cons eTau es)
 | beh_dec : forall t ls c rs es,
             behavior t (_memory ls (c-1) rs) es
-            -> behavior (Inc t) (_memory ls c rs) es
+            -> behavior (Inc t) (_memory ls c rs) (Cons eTau es)
 | beh_read : forall t ls c rs es n,
              behavior t (_memory ls n rs) es
              -> behavior (Read t) (_memory ls c rs) (Cons (eRead n) es)
@@ -118,11 +118,11 @@ Inductive behavior : instruction -> memory -> stream event -> Prop :=
 | beh_loop_zero : forall x t ls c rs es,
                   behavior t (_memory ls c rs) es
                   -> c = 0
-                  -> behavior ([ x ] t) (_memory ls c rs) es
+                  -> behavior ([ x ] t) (_memory ls c rs) (Cons eTau es)
 | beh_loop_nonzero : forall x t ls c rs es,
                      behavior (x ; [ x ] t) (_memory ls c rs) es
                      -> c <> 0
-                     -> behavior ([ x ] t) (_memory ls c rs) es.
+                     -> behavior ([ x ] t) (_memory ls c rs) (Cons eTau es).
 
 CoFixpoint zeroes : stream Z := Cons 0 zeroes.
 Definition memory_init := _memory zeroes 0 zeroes.
