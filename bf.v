@@ -139,6 +139,13 @@ repeat (pfold; repeat constructor).
 Qed.
 
 
+(* when are two brainfuck programs equal? *)
+Definition bf_equal i1 i2 := forall m e1 e2,
+  behavior i1 m e1 -> behavior i2 m e2 -> events_eq e1 e2.
 
 
+(* when is i2 a 'simulation' of i1 ? *)
+Definition bf_sim i1 i2 := forall m e,
+  behavior i2 m e -> (exists e', behavior i1 m e' /\ events_eq e' e).
 
+(* is the above definition right? maybe i'm missing something *)
