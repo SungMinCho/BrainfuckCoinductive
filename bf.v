@@ -8,7 +8,7 @@ Inductive instruction : Type :=
 | iInc : instruction -> instruction
 | iDec : instruction -> instruction
 | iRead : instruction -> instruction
-| iPrint : instruction -> instruction
+| iWrite : instruction -> instruction
 | iLoop : instruction -> instruction -> instruction.
 
 Notation "'End'" := iEnd.
@@ -17,7 +17,7 @@ Notation "'Right' x" := (iRight x) (at level 35, right associativity).
 Notation "'Inc' x" := (iInc x) (at level 35, right associativity).
 Notation "'Dec' x" := (iDec x) (at level 35, right associativity).
 Notation "'Read' x" := (iRead x) (at level 35, right associativity).
-Notation "'Print' x" := (iPrint x) (at level 35, right associativity).
+Notation "'Write' x" := (iWrite x) (at level 35, right associativity).
 Notation "[ x ] y" := (iLoop x y) (at level 35, right associativity).
 
 Fixpoint seq i1 i2 :=
@@ -28,15 +28,15 @@ match i1 with
 | Inc t => Inc (seq t i2)
 | Dec t => Dec (seq t i2)
 | Read t => Read (seq t i2)
-| Print t => Print (seq t i2)
+| Write t => Write (seq t i2)
 | [ x ] y => [ x ] (seq y i2)
 end.
 
 Notation "x ; y" := (seq x y) (at level 39).
 
-Definition add1 := (Read Right Read Left [ Dec Right Inc Left End ] Right Print End).
+Definition add1 := (Read Right Read Left [ Dec Right Inc Left End ] Right Write End).
 
-Definition add2 := (Right Read Left Read [ Dec Right Inc Left End ] Right Print End).
+Definition add2 := (Right Read Left Read [ Dec Right Inc Left End ] Right Write End).
 
 CoInductive stream (T:Type) :=
 | Nil : stream T
@@ -48,14 +48,14 @@ Implicit Arguments Cons [T].
 Inductive event : Type :=
 | eTau : event
 | eRead : Z -> event
-| ePrint : Z -> event.
+| eWrite : Z -> event.
 
 Inductive events_eq_gen events_eq : stream event -> stream event -> Prop :=
 | es_nil_nil : events_eq_gen events_eq Nil Nil
 | es_left_tau : forall s1 s2 (R:events_eq s1 s2), events_eq_gen events_eq (Cons eTau s1) s2
 | es_right_tau : forall s1 s2 (R:events_eq s1 s2), events_eq_gen events_eq s1 (Cons eTau s2)
 | es_read_same : forall n s1 s2 (R:events_eq s1 s2), events_eq_gen events_eq (Cons (eRead n) s1) (Cons (eRead n) s2)
-| es_print_same : forall n s1 s2 (R:events_eq s1 s2), events_eq_gen events_eq (Cons (ePrint n) s1) (Cons (ePrint n) s2).
+| es_write_same : forall n s1 s2 (R:events_eq s1 s2), events_eq_gen events_eq (Cons (eWrite n) s1) (Cons (eWrite n) s2).
 Hint Constructors events_eq_gen.
 
 Definition events_eq := paco2 events_eq_gen bot2.
@@ -89,8 +89,8 @@ pfold.
 constructor.
 Qed.
 
-CoFixpoint p1 := (Cons (ePrint 1) p1).
-CoFixpoint p2 := (Cons (ePrint 1) (Cons eTau p2)).
+CoFixpoint p1 := (Cons (eWrite 1) p1).
+CoFixpoint p2 := (Cons (eWrite 1) (Cons eTau p2)).
 
 Example p1p2: events_eq p1 p2.
 Proof.
@@ -136,9 +136,9 @@ Inductive step : state -> event -> state -> Prop :=
     step (_state (Read t) (_memory ls c rs) (Cons n ns))
          (eRead n)
          (_state t (_memory ls n rs) ns)
-| step_print : forall t ls c rs is,
-    step (_state (Print t) (_memory ls c rs) is)
-         (ePrint c)
+| step_write : forall t ls c rs is,
+    step (_state (Write t) (_memory ls c rs) is)
+         (eWrite c)
          (_state t (_memory ls c rs) is)
 | step_loopzero : forall x y ls rs is,
     step (_state ([ x ] y) (_memory ls 0 rs) is)
