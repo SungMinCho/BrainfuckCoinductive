@@ -89,6 +89,23 @@ pfold.
 constructor.
 Qed.
 
+CoFixpoint p1 := (Cons (ePrint 1) p1).
+CoFixpoint p2 := (Cons (ePrint 1) (Cons eTau p2)).
+
+Example p1p2: events_eq p1 p2.
+Proof.
+  pcofix CIH.
+  pfold.
+  rewrite stream_destr_eq.
+  rewrite stream_destr_eq at 1.
+  constructor.
+  constructor.
+  pfold.
+  constructor.
+  auto.
+Qed.
+
+
 (* i used stream that can be finite. but it doesn't matter *)
 Inductive memory : Type :=
 | _memory : stream Z -> Z -> stream Z -> memory.
