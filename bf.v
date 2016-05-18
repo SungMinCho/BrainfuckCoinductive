@@ -110,7 +110,45 @@ Qed.
 Inductive memory : Type :=
 | _memory : stream Z -> Z -> stream Z -> memory.
 
+Inductive state : Type :=
+| _state : instruction -> memory -> stream Z -> state. (* stream Z = input stream *)
+
 Open Scope Z.
+
+Inductive step : state -> event -> state -> Prop :=
+| step_left : forall t l ls c rs is,
+    step (_state (Left t) (_memory (Cons l ls) c rs) is)
+         eTau
+         (_state t (_memory ls l (Cons c rs)) is)
+| step_right : forall t ls c r rs is,
+    step (_state (Right t) (_memory ls c (Cons r rs)) is)
+         eTau
+         (_state t (_memory (Cons c ls) r rs) is)
+| step_inc : forall t ls c rs is,
+    step (_state (Inc t) (_memory ls c rs) is)
+         eTau
+         (_state t (_memory ls (c+1) rs) is)
+| step_dec : forall t ls c rs is,
+    step (_state (Dec t) (_memory ls c rs) is)
+         eTau
+         (_state t (_memory ls (c-1) rs) is)
+| step_read : forall t ls c rs n ns,
+    step (_state (Read t) (_memory ls c rs) (Cons n ns))
+         (eRead n)
+         (_state t (_memory ls n rs) ns)
+| step_print : forall t ls c rs is,
+    step (_state (Print t) (_memory ls c rs) is)
+         (ePrint c)
+         (_state t (_memory ls c rs) is)
+| step_loopzero : forall x y ls rs is,
+    step (_state ([ x ] y) (_memory ls 0 rs) is)
+         eTau
+         (_state y (_memory ls 0 rs) is)
+| step_loopnonzero : forall x y ls c rs is,
+    c <> 0 ->
+    step (_state ([ x ] y ) (_memory ls c rs) is)
+         eTau
+         (_state (x ; [ x ] y) (_memory ls c rs) is).
 
 Inductive behavior : instruction -> memory -> stream event -> Prop :=
 | beh_end : forall m, behavior End m Nil
