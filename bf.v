@@ -47,8 +47,8 @@ Implicit Arguments Cons [T].
 
 Inductive event : Type :=
 | eTau : event
-| eRead : Z -> event
-| eWrite : Z -> event.
+| eRead : nat -> event
+| eWrite : nat -> event.
 
 Inductive events_eq_gen events_eq : stream event -> stream event -> Prop :=
 | es_nil_nil : events_eq_gen events_eq Nil Nil
@@ -76,17 +76,17 @@ Implicit Arguments stream_destr_eq [T].
 
 Example taus_taus : events_eq taus taus.
 Proof.
-pcofix CIH.
-pfold.
-rewrite stream_destr_eq at 1. rewrite stream_destr_eq.
-constructor. left. pfold. constructor. right. auto.
+  pcofix CIH.
+  pfold.
+  rewrite stream_destr_eq at 1. rewrite stream_destr_eq.
+  constructor. left. pfold. constructor. right. auto.
 Qed.
 
 Example nil_nil : events_eq Nil Nil.
 Proof.
-pcofix CIH.
-pfold.
-constructor.
+  pcofix CIH.
+  pfold.
+  constructor.
 Qed.
 
 CoFixpoint p1 := (Cons (eWrite 1) p1).
@@ -108,12 +108,10 @@ Qed.
 
 (* i used stream that can be finite. but it doesn't matter *)
 Inductive memory : Type :=
-| _memory : stream Z -> Z -> stream Z -> memory.
+| _memory : stream nat -> nat -> stream nat -> memory.
 
 Inductive state : Type :=
-| _state : instruction -> memory -> stream Z -> state. (* stream Z = input stream *)
-
-Open Scope Z.
+| _state : instruction -> memory -> stream nat -> state. (* stream nat = input stream *)
 
 Inductive step : state -> event -> state -> Prop :=
 | step_left : forall t l ls c rs is,
@@ -127,11 +125,15 @@ Inductive step : state -> event -> state -> Prop :=
 | step_inc : forall t ls c rs is,
     step (_state (Inc t) (_memory ls c rs) is)
          eTau
-         (_state t (_memory ls (c+1) rs) is)
-| step_dec : forall t ls c rs is,
-    step (_state (Dec t) (_memory ls c rs) is)
+         (_state t (_memory ls (S c) rs) is)
+| step_dec0 : forall t ls rs is,
+    step (_state (Dec t) (_memory ls 0 rs) is)
          eTau
-         (_state t (_memory ls (c-1) rs) is)
+         (_state t (_memory ls 0 rs) is)
+| step_decs : forall t ls c rs is,
+    step (_state (Dec t) (_memory ls (S c) rs) is)
+         eTau
+         (_state t (_memory ls c rs) is)
 | step_read : forall t ls c rs n ns,
     step (_state (Read t) (_memory ls c rs) (Cons n ns))
          (eRead n)
@@ -145,10 +147,9 @@ Inductive step : state -> event -> state -> Prop :=
          eTau
          (_state y (_memory ls 0 rs) is)
 | step_loopnonzero : forall x y ls c rs is,
-    c <> 0 ->
-    step (_state ([ x ] y ) (_memory ls c rs) is)
+    step (_state ([ x ] y ) (_memory ls (S c) rs) is)
          eTau
-         (_state (x ; [ x ] y) (_memory ls c rs) is).
+         (_state (x ; [ x ] y) (_memory ls (S c) rs) is).
 
 Inductive steps : state -> stream event -> Prop :=
 | steps0 : forall m is, steps (_state End m is) Nil
@@ -157,5 +158,18 @@ Inductive steps : state -> stream event -> Prop :=
     steps (_state i' m' is') es ->
     steps (_state i m is) (Cons e es).
 
-CoFixpoint zeroes : stream Z := Cons 0 zeroes.
+CoFixpoint zeroes : stream nat := Cons 0 zeroes.
 Definition memory_init := _memory zeroes 0 zeroes.
+
+Theorem add1_works : forall n m es,
+    steps (_state add1 memory_init (Cons n (Cons m Nil))) es ->
+          events_eq es (Cons (eRead n) (Cons (eRead m) (Cons (eWrite (n + m)) Nil))).
+Proof.
+  induction n; unfold add1; intros.
+  repeat (match goal with [H:steps _ _ |- _] => inversion H; subst end;
+          match goal with [H:step _ _ _ |- _] => inversion H; subst end).
+  assert (H0m: 0+m = m). omega. rewrite H0m.
+  pcofix CIH.
+  repeat (pfold; repeat constructor).
+
+  
