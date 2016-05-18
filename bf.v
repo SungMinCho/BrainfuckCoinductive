@@ -150,6 +150,13 @@ Inductive step : state -> event -> state -> Prop :=
          eTau
          (_state (x ; [ x ] y) (_memory ls c rs) is).
 
+Inductive steps : state -> stream event -> Prop :=
+| steps0 : forall m is, steps (_state End m is) Nil
+| steps1 : forall i i' m m' is is' e es,
+    step (_state i m is) e (_state i' m' is') ->
+    steps (_state i' m' is') es ->
+    steps (_state i m is) (Cons e es).
+
 Inductive behavior : instruction -> memory -> stream event -> Prop :=
 | beh_end : forall m, behavior End m Nil
 | beh_left : forall t l ls c rs es,
