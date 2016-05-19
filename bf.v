@@ -61,6 +61,31 @@ Hint Constructors events_eq_gen.
 Definition events_eq := paco2 events_eq_gen bot2.
 Lemma events_eq_gen_monotone : monotone2 events_eq_gen.
 Proof. pmonauto. Qed.
+Hint Resolve events_eq_gen_monotone.
+
+Theorem events_eq_left_tau : forall e1 e2, events_eq e1 e2 -> events_eq (Cons eTau e1) e2.
+Proof.
+  intros. pfold. punfold H.
+Qed.
+
+Theorem events_eq_right_tau : forall e1 e2, events_eq e1 e2 -> events_eq e1 (Cons eTau e2).
+Proof.
+  intros. pfold. punfold H.
+Qed.
+
+Theorem events_eq_read_same : forall n e1 e2, events_eq e1 e2 ->
+                                         events_eq (Cons (eRead n) e1) (Cons (eRead n) e2).
+Proof.
+  intros. pfold. punfold H.
+Qed.
+
+Theorem events_eq_write_same : forall n e1 e2, events_eq e1 e2 ->
+                                          events_eq (Cons (eWrite n) e1) (Cons (eWrite n) e2).
+Proof.
+  intros. pfold. punfold H.
+Qed.
+
+Hint Resolve events_eq_left_tau events_eq_right_tau events_eq_read_same events_eq_write_same.
 
 CoFixpoint taus : stream event := Cons eTau taus.
 
@@ -161,15 +186,48 @@ Inductive steps : state -> stream event -> Prop :=
 CoFixpoint zeroes : stream nat := Cons 0 zeroes.
 Definition memory_init := _memory zeroes 0 zeroes.
 
+Ltac inv H := inversion H; subst.
+
+Theorem adding : forall ls rs n m is es,
+    steps (_state ([Dec Right Inc Left End] Right Write End)
+                  (_memory ls n (Cons m rs)) is)
+          es ->
+    events_eq es (Cons (eWrite (n+m)) Nil).
+Proof.
+  induction n; intros.
+  repeat (match goal with [H:steps _ _ |- _] => inv H; clear H end;
+          match goal with [H:step _ _ _ |- _] => inv H; clear H end).
+  assert (H0m: 0+m = m). omega. rewrite H0m. clear H0m.
+  inv H5.
+  pcofix CIH. repeat (pfold; repeat constructor). inv H3.
+  match goal with [H:steps _ _ |- _] => inv H; clear H end;
+  match goal with [H:step _ _ _ |- _] => inv H; clear H end.
+  match goal with [H:steps _ _ |- _] => inv H; clear H end;
+  match goal with [H:step _ _ _ |- _] => inv H; clear H end.
+  match goal with [H:steps _ _ |- _] => inv H; clear H end;
+  match goal with [H:step _ _ _ |- _] => inv H; clear H end.
+  match goal with [H:steps _ _ |- _] => inv H; clear H end;
+  match goal with [H:step _ _ _ |- _] => inv H; clear H end.
+  match goal with [H:steps _ _ |- _] => inv H; clear H end;
+  match goal with [H:step _ _ _ |- _] => inv H; clear H end.
+  apply IHn in H5.
+  assert (n + S m = S n + m). omega. rewrite H in H5. clear H. simpl in *.
+  auto 10.
+Qed.
+
 Theorem add1_works : forall n m es,
     steps (_state add1 memory_init (Cons n (Cons m Nil))) es ->
           events_eq es (Cons (eRead n) (Cons (eRead m) (Cons (eWrite (n + m)) Nil))).
 Proof.
-  induction n; unfold add1; intros.
-  repeat (match goal with [H:steps _ _ |- _] => inversion H; subst end;
-          match goal with [H:step _ _ _ |- _] => inversion H; subst end).
-  assert (H0m: 0+m = m). omega. rewrite H0m.
-  pcofix CIH.
-  repeat (pfold; repeat constructor).
-
-  
+  intros.
+  unfold add1 in *.
+  inv H. inv H4; clear H4.
+  inv H5. inv H4; clear H4.
+  inv H6. inv H4; clear H4.
+  inv H8. inv H4; clear H4.
+  rewrite stream_destr_eq in H7.
+  inv H7; clear H7.
+  apply adding in H9.
+  clear H5 H H8 H6.
+  auto.
+Qed.
